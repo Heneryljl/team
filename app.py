@@ -3,15 +3,15 @@ from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 import os
-
+from openai import OpenAI
 app = Flask(__name__)
 
 # 設定 LINE Channel Access Token 和 Secret
-LINE_CHANNEL_ACCESS_TOKEN = os.getenv("CHANNEL_ACCESS_TOKEN")
-LINE_CHANNEL_SECRET = os.getenv("CHANNEL_SECRET")
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
+LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 
-line_bot_api = LineBotApi(CHANNEL_ACCESS_TOKEN)
-line_handler = WebhookHandler(CHANNEL_SECRET)
+line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
+line_handler = WebhookHandler(LINE_CHANNEL_SECRET)
 @app.route('/')
 def home():
     return "LINE BOT 首頁"
@@ -31,12 +31,24 @@ def callback():
 @line_handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_message = event.message.text
-    reply_message = f"你說了：{user_message}"
-    
+    client = OpenAI(api_key=os.getenv('key'))
+    completion = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {
+                "role": "user",
+                "content": "Write a haiku about recursion in programming."
+            }
+        ]
+    )
+    reply_message=completion.choices[0].message.content
     line_bot_api.reply_message(
         event.reply_token,
         TextSendMessage(text=reply_message)
     )
+
+
 
 if __name__ == "__main__":
     app.run(port=8000)
